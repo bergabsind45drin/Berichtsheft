@@ -1,0 +1,263 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Berichtsheft</title>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
+
+<style>
+body{
+    margin:0;
+    font-family:Arial;
+    background:#0f0f0f;
+    color:white;
+    padding:20px;
+}
+
+.container{
+    max-width:1000px;
+    margin:auto;
+    background:#1a1a1a;
+    padding:20px;
+    border-radius:15px;
+}
+
+h1{text-align:center;}
+
+input,textarea{
+    width:100%;
+    padding:12px;
+    margin-top:5px;
+    margin-bottom:15px;
+    background:#111;
+    border:1px solid #333;
+    color:white;
+    border-radius:10px;
+}
+
+.day{
+    background:#222;
+    padding:15px;
+    border-radius:12px;
+    margin-bottom:10px;
+}
+
+button{
+    padding:12px;
+    width:48%;
+    margin-top:10px;
+    border:none;
+    border-radius:10px;
+    cursor:pointer;
+    font-weight:bold;
+}
+
+.pdf{background:red;color:white;}
+.word{background:blue;color:white;}
+
+.buttons{
+    display:flex;
+    justify-content:space-between;
+    flex-wrap:wrap;
+}
+</style>
+</head>
+
+<body>
+
+<div class="container">
+
+<h1>📘 Berichtsheft</h1>
+
+<label>KW</label>
+<input type="number" id="kw" oninput="updateDates()">
+
+<label>Jahr</label>
+<input type="number" id="jahr" value="2026" oninput="updateDates()">
+
+<label>Azubi</label>
+<input type="text" id="azubi">
+
+<label>Ausbilder</label>
+<input type="text" id="ausbilder">
+
+<div class="day">
+<h3 id="moTitle">Montag</h3>
+<textarea id="mo"></textarea>
+</div>
+
+<div class="day">
+<h3 id="diTitle">Dienstag</h3>
+<textarea id="di"></textarea>
+</div>
+
+<div class="day">
+<h3 id="miTitle">Mittwoch</h3>
+<textarea id="mi"></textarea>
+</div>
+
+<div class="day">
+<h3 id="doTitle">Donnerstag</h3>
+<textarea id="do"></textarea>
+</div>
+
+<div class="day">
+<h3 id="frTitle">Freitag</h3>
+<textarea id="fr"></textarea>
+</div>
+
+<div class="buttons">
+<button class="pdf" onclick="downloadPDF()">PDF Download</button>
+<button class="word" onclick="downloadWord()">Word Download</button>
+</div>
+
+</div>
+
+<script>
+
+// KW → Montag
+function getMonday(week, year){
+    const simple = new Date(year, 0, 1 + (week - 1) * 7);
+    const dow = simple.getDay();
+    const monday = new Date(simple);
+    monday.setDate(simple.getDate() - dow + 1);
+    return monday;
+}
+
+function format(d){
+    return d.toLocaleDateString('de-DE');
+}
+
+function updateDates(){
+
+    const kw = document.getElementById("kw").value;
+    const year = document.getElementById("jahr").value;
+
+    if(!kw || !year) return;
+
+    const mon = getMonday(kw,year);
+
+    const days = ["mo","di","mi","do","fr"];
+    const titles = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
+
+    for(let i=0;i<5;i++){
+        let d = new Date(mon);
+        d.setDate(mon.getDate()+i);
+
+        document.getElementById(days[i]+"Title").innerText =
+            titles[i] + " (" + format(d) + ")";
+    }
+}
+
+
+// PDF
+function downloadPDF(){
+
+    const { jsPDF } = window.jspdf;
+    const doc = new jsPDF();
+
+    const kw = document.getElementById("kw").value;
+    const year = document.getElementById("jahr").value;
+
+    const rows = [
+        ["Montag", document.getElementById("moTitle").innerText, document.getElementById("mo").value],
+        ["Dienstag", document.getElementById("diTitle").innerText, document.getElementById("di").value],
+        ["Mittwoch", document.getElementById("miTitle").innerText, document.getElementById("mi").value],
+        ["Donnerstag", document.getElementById("doTitle").innerText, document.getElementById("do").value],
+        ["Freitag", document.getElementById("frTitle").innerText, document.getElementById("fr").value],
+    ];
+
+    doc.text("Berichtsheft", 14, 15);
+    doc.text("KW: " + kw + " Jahr: " + year, 14, 25);
+
+    doc.autoTable({
+        startY: 35,
+
+        head: [["Tag","Datum","Tätigkeiten"]],
+        body: rows,
+
+        columnStyles: {
+            0: { cellWidth: 30 },   // Tag bleibt 1 Zeile
+            1: { cellWidth: 50 },   // Datum bleibt 1 Zeile
+            2: { cellWidth: 'auto' }
+        },
+
+        styles: {
+            fontSize: 10,
+            cellPadding: 3,
+            overflow: 'linebreak'
+        }
+    });
+
+    doc.save("Berichtsheft_KW_" + kw + ".pdf");
+}
+
+
+// WORD
+function downloadWord(){
+
+    const content = `
+    <h2>Berichtsheft</h2>
+    KW: ${document.getElementById("kw").value}<br>
+    Jahr: ${document.getElementById("jahr").value}<br>
+    Azubi: ${document.getElementById("azubi").value}<br>
+    Ausbilder: ${document.getElementById("ausbilder").value}<br><br>
+
+    <table border="1" style="border-collapse:collapse;width:100%;table-layout:fixed;">
+    <tr>
+        <th style="width:20%;white-space:nowrap;">Tag</th>
+        <th style="width:30%;white-space:nowrap;">Datum</th>
+        <th style="width:50%;">Tätigkeiten</th>
+    </tr>
+
+    <tr>
+        <td style="white-space:nowrap;">Montag</td>
+        <td style="white-space:nowrap;">${document.getElementById("moTitle").innerText}</td>
+        <td>${document.getElementById("mo").value}</td>
+    </tr>
+
+    <tr>
+        <td style="white-space:nowrap;">Dienstag</td>
+        <td style="white-space:nowrap;">${document.getElementById("diTitle").innerText}</td>
+        <td>${document.getElementById("di").value}</td>
+    </tr>
+
+    <tr>
+        <td style="white-space:nowrap;">Mittwoch</td>
+        <td style="white-space:nowrap;">${document.getElementById("miTitle").innerText}</td>
+        <td>${document.getElementById("mi").value}</td>
+    </tr>
+
+    <tr>
+        <td style="white-space:nowrap;">Donnerstag</td>
+        <td style="white-space:nowrap;">${document.getElementById("doTitle").innerText}</td>
+        <td>${document.getElementById("do").value}</td>
+    </tr>
+
+    <tr>
+        <td style="white-space:nowrap;">Freitag</td>
+        <td style="white-space:nowrap;">${document.getElementById("frTitle").innerText}</td>
+        <td>${document.getElementById("fr").value}</td>
+    </tr>
+
+    </table>
+    `;
+
+    const blob = new Blob(['\ufeff', content], {type:'application/msword'});
+    const url = URL.createObjectURL(blob);
+
+    const a = document.createElement("a");
+    a.href = url;
+    a.download = "Berichtsheft_KW_" + document.getElementById("kw").value + ".doc";
+    a.click();
+
+    URL.revokeObjectURL(url);
+}
+
+</script>
+
+</body>
+</html>
