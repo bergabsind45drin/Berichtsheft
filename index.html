@@ -5,63 +5,55 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Berichtsheft</title>
 
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.31/jspdf.plugin.autotable.min.js"></script>
-
 <style>
 body{
-    margin:0;
-    font-family:Arial;
-    background:#0f0f0f;
-    color:white;
-    padding:20px;
+  font-family: Arial, sans-serif;
+  background:#0f0f0f;
+  color:white;
+  margin:20px;
 }
 
 .container{
-    max-width:1000px;
-    margin:auto;
-    background:#1a1a1a;
-    padding:20px;
-    border-radius:15px;
+  max-width:900px;
+  margin:auto;
+  background:#1c1c1c;
+  padding:25px;
+  border-radius:12px;
 }
 
-h1{text-align:center;}
+h1{ text-align:center; }
 
-input,textarea{
-    width:100%;
-    padding:12px;
-    margin-top:5px;
-    margin-bottom:15px;
-    background:#111;
-    border:1px solid #333;
-    color:white;
-    border-radius:10px;
+label{ font-weight:bold; }
+
+input, textarea{
+  width:100%;
+  margin-top:5px;
+  margin-bottom:20px;
+  padding:10px;
+  border-radius:8px;
+  border:1px solid #333;
+  background:#0f0f0f;
+  color:white;
 }
 
-.day{
-    background:#222;
-    padding:15px;
-    border-radius:12px;
-    margin-bottom:10px;
+textarea{
+  min-height:100px;
+  resize:vertical;
+  white-space: pre-wrap;
 }
 
 button{
-    padding:12px;
-    width:48%;
-    margin-top:10px;
-    border:none;
-    border-radius:10px;
-    cursor:pointer;
-    font-weight:bold;
+  padding:12px 20px;
+  border:none;
+  border-radius:8px;
+  cursor:pointer;
+  font-size:16px;
+  background:#1e88e5;
+  color:white;
 }
 
-.pdf{background:red;color:white;}
-.word{background:blue;color:white;}
-
-.buttons{
-    display:flex;
-    justify-content:space-between;
-    flex-wrap:wrap;
+button:disabled{
+  opacity:0.5;
 }
 </style>
 </head>
@@ -70,191 +62,213 @@ button{
 
 <div class="container">
 
-<h1>📘 Berichtsheft</h1>
+<h1>Berichtsheft</h1>
 
-<label>KW</label>
-<input type="number" id="kw" oninput="updateDates()">
+<label>Kalenderwoche (KW):</label>
+<input type="number" id="kw" min="1" max="53" oninput="updateDates(); checkFields()">
 
-<label>Jahr</label>
-<input type="number" id="jahr" value="2026" oninput="updateDates()">
+<label>Jahr:</label>
+<input type="number" id="jahr" value="2026" oninput="updateDates(); checkFields()">
 
-<label>Azubi</label>
-<input type="text" id="azubi">
+<label>Azubi:</label>
+<input type="text" id="azubi" oninput="checkFields()">
 
-<label>Ausbilder</label>
-<input type="text" id="ausbilder">
+<label>Ausbilder:</label>
+<input type="text" id="ausbilder" oninput="checkFields()">
 
-<div class="day">
-<h3 id="moTitle">Montag</h3>
-<textarea id="mo"></textarea>
-</div>
+<h3>Montag</h3>
+<textarea id="montag" oninput="checkFields()"></textarea>
 
-<div class="day">
-<h3 id="diTitle">Dienstag</h3>
-<textarea id="di"></textarea>
-</div>
+<h3>Dienstag</h3>
+<textarea id="dienstag" oninput="checkFields()"></textarea>
 
-<div class="day">
-<h3 id="miTitle">Mittwoch</h3>
-<textarea id="mi"></textarea>
-</div>
+<h3>Mittwoch</h3>
+<textarea id="mittwoch" oninput="checkFields()"></textarea>
 
-<div class="day">
-<h3 id="doTitle">Donnerstag</h3>
-<textarea id="do"></textarea>
-</div>
+<h3>Donnerstag</h3>
+<textarea id="donnerstag" oninput="checkFields()"></textarea>
 
-<div class="day">
-<h3 id="frTitle">Freitag</h3>
-<textarea id="fr"></textarea>
-</div>
+<h3>Freitag</h3>
+<textarea id="freitag" oninput="checkFields()"></textarea>
 
-<div class="buttons">
-<button class="pdf" onclick="downloadPDF()">PDF Download</button>
-<button class="word" onclick="downloadWord()">Word Download</button>
-</div>
+<h3>Individuell (Auto-Verteilung)</h3>
+<textarea id="auto" oninput="autoFill()"></textarea>
+
+<button id="wordBtn" onclick="downloadWord()" disabled>
+Word herunterladen
+</button>
 
 </div>
 
 <script>
 
-// KW → Montag
-function getMonday(week, year){
-    const simple = new Date(year, 0, 1 + (week - 1) * 7);
-    const dow = simple.getDay();
-    const monday = new Date(simple);
-    monday.setDate(simple.getDate() - dow + 1);
-    return monday;
+/* ===== KW → Montag ===== */
+function getMondayOfISOWeek(w, y) {
+  const simple = new Date(y, 0, 1 + (w - 1) * 7);
+  const dow = simple.getDay();
+  const ISOweekStart = simple;
+
+  if (dow <= 4)
+    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
+  else
+    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
+
+  return ISOweekStart;
 }
 
-function format(d){
-    return d.toLocaleDateString('de-DE');
+function formatDate(d){
+  return d.toLocaleDateString('de-DE');
 }
 
-function updateDates(){
+function getWeekDates(){
+  const kw = parseInt(document.getElementById('kw').value);
+  const jahr = parseInt(document.getElementById('jahr').value);
 
-    const kw = document.getElementById("kw").value;
-    const year = document.getElementById("jahr").value;
+  const monday = getMondayOfISOWeek(kw, jahr);
 
-    if(!kw || !year) return;
-
-    const mon = getMonday(kw,year);
-
-    const days = ["mo","di","mi","do","fr"];
-    const titles = ["Montag","Dienstag","Mittwoch","Donnerstag","Freitag"];
-
-    for(let i=0;i<5;i++){
-        let d = new Date(mon);
-        d.setDate(mon.getDate()+i);
-
-        document.getElementById(days[i]+"Title").innerText =
-            titles[i] + " (" + format(d) + ")";
-    }
+  return [
+    new Date(monday),
+    new Date(monday.getTime() + 86400000),
+    new Date(monday.getTime() + 2*86400000),
+    new Date(monday.getTime() + 3*86400000),
+    new Date(monday.getTime() + 4*86400000)
+  ];
 }
 
+/* ===== AUTO SORTIERUNG ===== */
+function autoFill() {
+  const text = document.getElementById("auto").value;
 
-// PDF
-function downloadPDF(){
+  const lines = text.split("\n");
 
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+  let current = null;
 
-    const kw = document.getElementById("kw").value;
-    const year = document.getElementById("jahr").value;
+  const data = {
+    montag: [],
+    dienstag: [],
+    mittwoch: [],
+    donnerstag: [],
+    freitag: []
+  };
 
-    const rows = [
-        ["Montag", document.getElementById("moTitle").innerText, document.getElementById("mo").value],
-        ["Dienstag", document.getElementById("diTitle").innerText, document.getElementById("di").value],
-        ["Mittwoch", document.getElementById("miTitle").innerText, document.getElementById("mi").value],
-        ["Donnerstag", document.getElementById("doTitle").innerText, document.getElementById("do").value],
-        ["Freitag", document.getElementById("frTitle").innerText, document.getElementById("fr").value],
-    ];
+  function push(line){
+    if(!current) return;
+    data[current].push(line);
+  }
 
-    doc.text("Berichtsheft", 14, 15);
-    doc.text("KW: " + kw + " Jahr: " + year, 14, 25);
+  for(let line of lines){
+    const l = line.trim();
 
-    doc.autoTable({
-        startY: 35,
+    if(/^montag/i.test(l)) { current="montag"; continue; }
+    if(/^dienstag/i.test(l)) { current="dienstag"; continue; }
+    if(/^mittwoch/i.test(l)) { current="mittwoch"; continue; }
+    if(/^donnerstag/i.test(l)) { current="donnerstag"; continue; }
+    if(/^freitag/i.test(l)) { current="freitag"; continue; }
 
-        head: [["Tag","Datum","Tätigkeiten"]],
-        body: rows,
+    push(l);
+  }
 
-        columnStyles: {
-            0: { cellWidth: 30 },   // Tag bleibt 1 Zeile
-            1: { cellWidth: 50 },   // Datum bleibt 1 Zeile
-            2: { cellWidth: 'auto' }
-        },
+  document.getElementById("montag").value = data.montag.join("\n");
+  document.getElementById("dienstag").value = data.dienstag.join("\n");
+  document.getElementById("mittwoch").value = data.mittwoch.join("\n");
+  document.getElementById("donnerstag").value = data.donnerstag.join("\n");
+  document.getElementById("freitag").value = data.freitag.join("\n");
 
-        styles: {
-            fontSize: 10,
-            cellPadding: 3,
-            overflow: 'linebreak'
-        }
-    });
-
-    doc.save("Berichtsheft_KW_" + kw + ".pdf");
+  checkFields();
 }
 
+/* ===== CHECK ===== */
+function checkFields(){
+  const ok =
+    document.getElementById('kw').value &&
+    document.getElementById('jahr').value &&
+    document.getElementById('azubi').value.trim() &&
+    document.getElementById('ausbilder').value.trim() &&
+    document.getElementById('montag').value.trim() &&
+    document.getElementById('dienstag').value.trim() &&
+    document.getElementById('mittwoch').value.trim() &&
+    document.getElementById('donnerstag').value.trim() &&
+    document.getElementById('freitag').value.trim();
 
-// WORD
+  document.getElementById('wordBtn').disabled = !ok;
+}
+
+/* ===== FORMAT LISTE ===== */
+function format(text){
+  return text
+    .split("\n")
+    .filter(l => l.trim() !== "")
+    .map(l => l.trim().startsWith("-") ? l.trim() : "- " + l.trim())
+    .join("<br>");
+}
+
+/* ===== WORD EXPORT ===== */
 function downloadWord(){
 
-    const content = `
-    <h2>Berichtsheft</h2>
-    KW: ${document.getElementById("kw").value}<br>
-    Jahr: ${document.getElementById("jahr").value}<br>
-    Azubi: ${document.getElementById("azubi").value}<br>
-    Ausbilder: ${document.getElementById("ausbilder").value}<br><br>
+  const kw = document.getElementById('kw').value;
+  const jahr = document.getElementById('jahr').value;
+  const azubi = document.getElementById('azubi').value;
+  const ausbilder = document.getElementById('ausbilder').value;
 
-    <table border="1" style="border-collapse:collapse;width:100%;table-layout:fixed;">
-    <tr>
-        <th style="width:20%;white-space:nowrap;">Tag</th>
-        <th style="width:30%;white-space:nowrap;">Datum</th>
-        <th style="width:50%;">Tätigkeiten</th>
-    </tr>
+  const dates = getWeekDates();
 
-    <tr>
-        <td style="white-space:nowrap;">Montag</td>
-        <td style="white-space:nowrap;">${document.getElementById("moTitle").innerText}</td>
-        <td>${document.getElementById("mo").value}</td>
-    </tr>
+  const html = `
+  <html>
+  <head><meta charset="utf-8"></head>
 
-    <tr>
-        <td style="white-space:nowrap;">Dienstag</td>
-        <td style="white-space:nowrap;">${document.getElementById("diTitle").innerText}</td>
-        <td>${document.getElementById("di").value}</td>
-    </tr>
+  <body style="font-family:Arial;color:black;">
 
-    <tr>
-        <td style="white-space:nowrap;">Mittwoch</td>
-        <td style="white-space:nowrap;">${document.getElementById("miTitle").innerText}</td>
-        <td>${document.getElementById("mi").value}</td>
-    </tr>
+    <h1>Berichtsheft</h1>
 
-    <tr>
-        <td style="white-space:nowrap;">Donnerstag</td>
-        <td style="white-space:nowrap;">${document.getElementById("doTitle").innerText}</td>
-        <td>${document.getElementById("do").value}</td>
-    </tr>
+    <p><b>KW:</b> ${kw}</p>
+    <p><b>Jahr:</b> ${jahr}</p>
+    <p><b>Azubi:</b> ${azubi}</p>
+    <p><b>Ausbilder:</b> ${ausbilder}</p>
 
-    <tr>
-        <td style="white-space:nowrap;">Freitag</td>
-        <td style="white-space:nowrap;">${document.getElementById("frTitle").innerText}</td>
-        <td>${document.getElementById("fr").value}</td>
-    </tr>
+    <table border="1" style="width:100%;border-collapse:collapse;">
+      <tr>
+        <th style="text-align:center;">Tag</th>
+        <th style="text-align:center;">Datum</th>
+        <th>Tätigkeit</th>
+      </tr>
+
+      <tr><td style="text-align:center;">Montag</td><td style="text-align:center;">${formatDate(dates[0])}</td><td>${format(document.getElementById('montag').value)}</td></tr>
+      <tr><td style="text-align:center;">Dienstag</td><td style="text-align:center;">${formatDate(dates[1])}</td><td>${format(document.getElementById('dienstag').value)}</td></tr>
+      <tr><td style="text-align:center;">Mittwoch</td><td style="text-align:center;">${formatDate(dates[2])}</td><td>${format(document.getElementById('mittwoch').value)}</td></tr>
+      <tr><td style="text-align:center;">Donnerstag</td><td style="text-align:center;">${formatDate(dates[3])}</td><td>${format(document.getElementById('donnerstag').value)}</td></tr>
+      <tr><td style="text-align:center;">Freitag</td><td style="text-align:center;">${formatDate(dates[4])}</td><td>${format(document.getElementById('freitag').value)}</td></tr>
 
     </table>
-    `;
 
-    const blob = new Blob(['\ufeff', content], {type:'application/msword'});
-    const url = URL.createObjectURL(blob);
+    <br><br><br>
 
-    const a = document.createElement("a");
-    a.href = url;
-    a.download = "Berichtsheft_KW_" + document.getElementById("kw").value + ".doc";
-    a.click();
+    <table style="width:100%;margin-top:50px;">
+      <tr>
+        <td style="text-align:center;">
+          ___________________________<br>
+          Unterschrift Azubi
+        </td>
 
-    URL.revokeObjectURL(url);
+        <td style="text-align:center;">
+          ___________________________<br>
+          Unterschrift Ausbilder
+        </td>
+      </tr>
+    </table>
+
+  </body>
+  </html>
+  `;
+
+  const blob = new Blob([html], { type: "application/msword" });
+  const url = URL.createObjectURL(blob);
+
+  const a = document.createElement("a");
+  a.href = url;
+  a.download = `Berichtsheft_KW_${kw}.doc`;
+  a.click();
+
+  URL.revokeObjectURL(url);
 }
 
 </script>
