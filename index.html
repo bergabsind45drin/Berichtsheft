@@ -2,276 +2,547 @@
 <html lang="de">
 <head>
 <meta charset="UTF-8">
+<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Berichtsheft</title>
-
+<title>Berichtsheft - einfache Version</title>
 <style>
-body{
-  font-family: Arial, sans-serif;
-  background:#0f0f0f;
-  color:white;
-  margin:20px;
-}
-
-.container{
-  max-width:900px;
-  margin:auto;
-  background:#1c1c1c;
-  padding:25px;
-  border-radius:12px;
-}
-
-h1{ text-align:center; }
-
-label{ font-weight:bold; }
-
-input, textarea{
-  width:100%;
-  margin-top:5px;
-  margin-bottom:20px;
-  padding:10px;
-  border-radius:8px;
-  border:1px solid #333;
-  background:#0f0f0f;
-  color:white;
-}
-
-textarea{
-  min-height:100px;
-  resize:vertical;
-  white-space: pre-wrap;
-}
-
-button{
-  padding:12px 20px;
-  border:none;
-  border-radius:8px;
-  cursor:pointer;
-  font-size:16px;
-  background:#1e88e5;
-  color:white;
-}
-
-button:disabled{
-  opacity:0.5;
-}
+  :root {
+    font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    color: #e8edf5;
+    background: #090d14;
+    color-scheme: dark;
+    --bg: #090d14;
+    --panel: rgba(18, 25, 38, 0.92);
+    --panel-2: #121a28;
+    --border: #29364a;
+    --border-soft: #202b3b;
+    --text: #e8edf5;
+    --muted: #98a7bb;
+    --accent: #6ea8fe;
+    --accent-strong: #3d7ee8;
+    --accent-soft: rgba(110, 168, 254, 0.14);
+    --success: #67d7a8;
+    --warning: #f3c86b;
+    --shadow: 0 18px 50px rgba(0, 0, 0, 0.32);
+  }
+  * { box-sizing: border-box; }
+  html { min-height: 100%; background: var(--bg); }
+  body {
+    margin: 0;
+    min-height: 100vh;
+    background:
+      radial-gradient(circle at 10% 0%, rgba(61, 126, 232, 0.18), transparent 31rem),
+      radial-gradient(circle at 90% 12%, rgba(121, 80, 242, 0.13), transparent 28rem),
+      linear-gradient(180deg, #0b1019 0%, #090d14 100%);
+    color: var(--text);
+  }
+  header {
+    position: relative;
+    overflow: hidden;
+    border-bottom: 1px solid rgba(110, 168, 254, 0.22);
+    background: rgba(10, 15, 24, 0.82);
+    backdrop-filter: blur(16px);
+    padding: 32px 18px 28px;
+  }
+  header::after {
+    content: "";
+    position: absolute;
+    inset: auto -10% -90px 35%;
+    height: 170px;
+    background: radial-gradient(ellipse, rgba(110, 168, 254, 0.22), transparent 68%);
+    pointer-events: none;
+  }
+  header div, main { max-width: 1160px; margin: auto; }
+  h1 { margin: 0 0 8px; font-size: clamp(28px, 4vw, 40px); letter-spacing: -0.035em; }
+  h2 { margin: 0 0 16px; font-size: 21px; letter-spacing: -0.02em; }
+  header p { margin: 0; color: #aebbd0; font-size: 15px; }
+  main { padding: 24px 16px 60px; }
+  .card {
+    background: linear-gradient(145deg, rgba(20, 28, 43, 0.96), rgba(14, 20, 31, 0.96));
+    border: 1px solid var(--border-soft);
+    border-radius: 18px;
+    padding: 20px;
+    margin-bottom: 18px;
+    box-shadow: var(--shadow);
+  }
+  .grid { display: grid; grid-template-columns: repeat(5, minmax(130px, 1fr)); gap: 13px; }
+  label { display: block; font-weight: 700; margin-bottom: 7px; color: #dce5f2; font-size: 14px; }
+  input, textarea, select, button { font: inherit; }
+  input, textarea, select {
+    width: 100%;
+    color: var(--text);
+    border: 1px solid var(--border);
+    border-radius: 11px;
+    padding: 11px 12px;
+    background: #0c121d;
+    outline: none;
+    transition: border-color .18s ease, box-shadow .18s ease, background .18s ease;
+  }
+  input::placeholder, textarea::placeholder { color: #64748a; }
+  input:focus, textarea:focus, select:focus {
+    border-color: var(--accent);
+    background: #0f1724;
+    box-shadow: 0 0 0 4px rgba(110, 168, 254, 0.12);
+  }
+  textarea { min-height: 112px; resize: vertical; line-height: 1.5; }
+  select { color-scheme: dark; }
+  .days { display: grid; grid-template-columns: repeat(2, minmax(250px, 1fr)); gap: 13px; }
+  .bulk-box {
+    border: 1px solid rgba(110, 168, 254, 0.42);
+    border-radius: 15px;
+    padding: 16px;
+    margin-bottom: 18px;
+    background: linear-gradient(135deg, rgba(110, 168, 254, 0.10), rgba(121, 80, 242, 0.06));
+  }
+  .bulk-box textarea { min-height: 250px; font-family: inherit; }
+  .bulk-actions { display:flex; flex-wrap:wrap; gap:10px; margin-top:11px; }
+  .small-note, .hint { color: var(--muted); font-size: 13px; }
+  .small-note { margin-top:9px; }
+  .day-box {
+    border: 1px solid var(--border-soft);
+    border-radius: 14px;
+    padding: 14px;
+    background: rgba(8, 13, 21, 0.52);
+  }
+  .actions { display: flex; flex-wrap: wrap; gap: 10px; margin-top: 16px; align-items: center; }
+  button {
+    border: 0;
+    border-radius: 11px;
+    padding: 11px 16px;
+    cursor: pointer;
+    font-weight: 750;
+    transition: transform .16s ease, box-shadow .16s ease, filter .16s ease;
+  }
+  button:hover { transform: translateY(-1px); filter: brightness(1.06); }
+  button:active { transform: translateY(0); }
+  .primary {
+    background: linear-gradient(135deg, #6ea8fe, #3d7ee8);
+    color: #07111f;
+    box-shadow: 0 9px 24px rgba(61, 126, 232, 0.26);
+  }
+  .secondary {
+    background: #1b2637;
+    color: #d9e5f5;
+    border: 1px solid #30415a;
+  }
+  table {
+    width: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    table-layout: fixed;
+    overflow: hidden;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: #0d141f;
+  }
+  th, td {
+    border-right: 1px solid var(--border-soft);
+    border-bottom: 1px solid var(--border-soft);
+    padding: 12px;
+    text-align: left;
+    vertical-align: top;
+  }
+  tr:last-child td { border-bottom: 0; }
+  th:last-child, td:last-child { border-right: 0; }
+  th { background: #182335; color: #f0f5fb; font-size: 13px; letter-spacing: .01em; }
+  tbody tr:hover td { background: rgba(110, 168, 254, 0.035); }
+  th:nth-child(1), td:nth-child(1) { width: 14%; font-weight: 750; }
+  th:nth-child(2), td:nth-child(2) { width: 48%; }
+  th:nth-child(3), td:nth-child(3) { width: 38%; }
+  .line { margin-bottom: 8px; color: #dce5f2; }
+  .map-select { margin-bottom: 8px; font-size: 13px; background: #101925; }
+  .status { margin-left: auto; color: var(--success); font-size: 13px; }
+  .notice {
+    background: rgba(243, 200, 107, 0.09);
+    border: 1px solid rgba(243, 200, 107, 0.35);
+    color: #e8d9b5;
+    border-radius: 11px;
+    padding: 12px 13px;
+    font-size: 14px;
+  }
+  .signature-area > div > div:first-child { border-bottom-color: #77859a !important; }
+  @media (max-width: 900px) { .grid { grid-template-columns: repeat(2, minmax(180px, 1fr)); } }
+  @media (max-width: 780px) {
+    header { padding-top: 26px; }
+    .grid, .days { grid-template-columns: 1fr; }
+    .card { padding: 16px; border-radius: 15px; }
+    table { table-layout: auto; min-width: 740px; }
+    th:nth-child(n), td:nth-child(n) { width: auto; }
+    .status { width: 100%; margin-left: 0; }
+    .signature-area { grid-template-columns: 1fr !important; gap: 24px !important; }
+  }
 </style>
 </head>
-
 <body>
+<header><div>
+  <h1>Berichtsheft-Assistent</h1>
+  <p>KW und Tätigkeiten eintragen, Zuordnung prüfen, als Word-Datei exportieren.</p>
+</div></header>
+<main>
+  <section class="card">
+    <div class="grid">
+      <div><label for="azubiName">Name Azubi</label><input id="azubiName" type="text" placeholder="Vor- und Nachname"></div>
+      <div><label for="ausbilderName">Name Ausbilder/in</label><input id="ausbilderName" type="text" placeholder="Vor- und Nachname"></div>
+      <div><label for="company">Betrieb (optional)</label><input id="company" type="text"></div>
+      <div><label for="week">Kalenderwoche</label><input id="week" type="number" min="1" max="53"></div>
+      <div><label for="year">Jahr</label><input id="year" type="number" min="2020" max="2100"></div>
+    </div>
+  </section>
 
-<div class="container">
+  <section class="card">
+    <h2>Tätigkeiten</h2>
+    <div class="bulk-box">
+      <label for="bulkInput">Ganze Woche auf einmal einfügen</label>
+      <textarea id="bulkInput" placeholder="Montag
+---
 
-<h1>Berichtsheft</h1>
+Dienstag
+---
 
-<label>Kalenderwoche (KW):</label>
-<input type="number" id="kw" min="1" max="53" oninput="updateDates(); checkFields()">
+Mittwoch
+---
 
-<label>Jahr:</label>
-<input type="number" id="jahr" value="2026" oninput="updateDates(); checkFields()">
+Donnerstag
+---
 
-<label>Azubi:</label>
-<input type="text" id="azubi" oninput="checkFields()">
+Freitag
+---"></textarea>
+      <div class="bulk-actions">
+        <button class="primary" id="sortBtn" type="button">Auf Tage verteilen</button>
+        <button class="secondary" id="clearBulkBtn" type="button">Eingabefeld leeren</button>
+      </div>
+      <div class="small-note">Die Überschriften Montag bis Freitag werden erkannt. Punkte wie „...“ werden ignoriert.</div>
+    </div>
+    <p class="hint">Die erkannten Tätigkeiten kannst du unten noch ändern. Jeder Tag erscheint später nur einmal in der Tabelle.</p>
+    <div class="days" id="dayInputs"></div>
+    <div class="actions">
+      <button class="primary" id="updateBtn" type="button">Tabelle aktualisieren</button>
+      <button class="secondary" id="clearBtn" type="button">Woche leeren</button>
+      <span class="status" id="status">Automatisch gespeichert</span>
+    </div>
+  </section>
 
-<label>Ausbilder:</label>
-<input type="text" id="ausbilder" oninput="checkFields()">
-
-<h3>Montag</h3>
-<textarea id="montag" oninput="checkFields()"></textarea>
-
-<h3>Dienstag</h3>
-<textarea id="dienstag" oninput="checkFields()"></textarea>
-
-<h3>Mittwoch</h3>
-<textarea id="mittwoch" oninput="checkFields()"></textarea>
-
-<h3>Donnerstag</h3>
-<textarea id="donnerstag" oninput="checkFields()"></textarea>
-
-<h3>Freitag</h3>
-<textarea id="freitag" oninput="checkFields()"></textarea>
-
-<h3>Individuell (Auto-Verteilung)</h3>
-<textarea id="auto" oninput="autoFill()"></textarea>
-
-<button id="wordBtn" onclick="downloadWord()" disabled>
-Word herunterladen
-</button>
-
-</div>
-
+  <section class="card">
+    <h2>Vorschau</h2>
+    <div class="notice">Die Zuordnung basiert auf dem hinterlegten Ausbildungsrahmenplan. Du kannst jede vorgeschlagene Nummer im Auswahlfeld ändern.</div>
+    <div style="overflow-x:auto; margin-top:12px">
+      <table>
+        <thead><tr><th>Tag</th><th>Tätigkeiten</th><th>Zuordnung<br><span style="font-weight:500;color:#aebbd0">Abschnitt / Lfd. Nr.</span></th></tr></thead>
+        <tbody id="previewBody"></tbody>
+      </table>
+    </div>
+    <div class="actions">
+      <button class="primary" id="exportBtn" type="button">Als Word-Datei (.rtf) exportieren</button>
+    </div>
+    <div class="signature-area" style="margin-top:32px; display:grid; grid-template-columns:1fr 1fr; gap:40px;">
+      <div>
+        <div style="border-bottom:1px solid #1f2933; height:44px;"></div>
+        <div style="margin-top:6px; font-size:14px;">Datum, Unterschrift Azubi: <span id="sigAzubiName"></span></div>
+      </div>
+      <div>
+        <div style="border-bottom:1px solid #1f2933; height:44px;"></div>
+        <div style="margin-top:6px; font-size:14px;">Datum, Unterschrift Ausbilder/in: <span id="sigAusbilderName"></span></div>
+      </div>
+    </div>
+  </section>
+</main>
 <script>
+'use strict';
+const MAPPINGS = [{"code": "A-1", "section": "A", "number": 1, "title": "Informationsmanagement anwenden", "keywords": ["kommunikationssystem", "betriebssystem", "dokumentenmanagement", "onlineanwendung", "informationsbeschaffung", "datensicherung", "datenpflege", "dateiablage", "software eingerichtet", "programm eingerichtet", "computer eingerichtet", "scanner", "netzwerk", "datenbank"]}, {"code": "A-2", "section": "A", "number": 2, "title": "Informationsverarbeitung durchführen", "keywords": ["text erstellt", "texte erstellt", "brief erstellt", "anschreiben", "etikett", "etiketten", "schild", "schilder", "serviceschild", "service-schild", "ausgedruckt", "gedruckt", "druck", "word", "excel", "tabelle erstellt", "diagramm", "präsentation", "dokument erstellt", "dokument bearbeitet", "datei exportiert", "datei importiert", "archiviert", "vorlage erstellt", "liste erstellt", "serienbrief", "flyer gestaltet", "preisliste", "produktblatt"]}, {"code": "A-3", "section": "A", "number": 3, "title": "Bürowirtschaftliche Abläufe organisieren", "keywords": ["büromaterial", "posteingang", "postausgang", "post bearbeitet", "briefmarke", "ablage", "akten", "dokumente abgelegt", "unterlagen abgelegt", "ordner sortiert", "scan abgelegt", "archiv", "aufbewahrung", "büro aufgeräumt"]}, {"code": "A-4", "section": "A", "number": 4, "title": "Koordinations- und Organisationsaufgaben übernehmen", "keywords": ["termin", "termine", "kalender", "besprechung", "sitzung", "meeting", "projekt geplant", "projekt unterstützt", "koordiniert", "organisation", "vorbereitet", "nachbereitet", "einsatz geplant", "tour geplant"]}, {"code": "A-5", "section": "A", "number": 5, "title": "Kundenbeziehungen gestalten", "keywords": ["kunde beraten", "kundin beraten", "kundengespräch", "kundenkontakt", "telefoniert", "telefonat", "kunden angerufen", "kunde angerufen", "auskunft", "kundenservice", "kunden betreut", "kunde betreut", "kundenanfrage", "kunden erklärt", "einweisung", "kundendaten", "reklamation angenommen", "beschwerde angenommen", "kundenbesuch"]}, {"code": "A-6", "section": "A", "number": 6, "title": "Auftragsbearbeitung durchführen", "keywords": ["auftrag", "kundenauftrag", "angebot erstellt", "rechnung erstellt", "lieferschein erstellt", "begleitdokument", "auftragsabwicklung", "automat aufgestellt", "automaten aufgestellt", "maschine aufgestellt", "installiert", "inbetriebgenommen", "montiert", "techniker zum kunden", "mit techniker", "ausgeliefert", "lieferung zum kunden", "reklamation bearbeitet", "auftrag bearbeitet", "auftrag angenommen"]}, {"code": "A-7", "section": "A", "number": 7, "title": "Material und externe Dienstleistungen beschaffen", "keywords": ["materialbedarf", "bestellung", "bestellt", "lieferant", "angebot eingeholt", "angebote verglichen", "liefertermin", "wareneingang", "ware angenommen", "lieferung geprüft", "material beschafft", "einkauf", "verbrauchsmaterial", "ersatzteil bestellt", "kaffee bestellt", "milch bestellt", "becher bestellt"]}, {"code": "A-8", "section": "A", "number": 8, "title": "Personalbezogene Aufgaben übernehmen", "keywords": ["arbeitszeit", "stundenzettel", "dienstreise", "reisekosten", "mitarbeiterdaten", "personalstatistik", "urlaubsantrag", "krankmeldung", "personaleinsatz", "schichtplan", "personalakte"]}, {"code": "A-9", "section": "A", "number": 9, "title": "Kaufmännische Steuerung durchführen", "keywords": ["beleg geprüft", "belege geprüft", "rechnung geprüft", "rechnungen geprüft", "rechnung sortiert", "rechnungen sortiert", "zahlung vorbereitet", "kosten geprüft", "buchhaltung", "rechnungswesen", "kalkulation", "wirtschaftlichkeit", "finanzierung", "kontoauszug", "kasse geprüft", "beleg zugeordnet"]}, {"code": "B-1", "section": "B", "number": 1, "title": "Auftragsprozess steuern", "keywords": ["kunden beraten", "angebot erstellt", "auftrag bestätigt", "ressourcenplan", "auftragsdaten", "soll ist", "abnahme", "nachkalkulation", "fakturiert", "zahlungseingang", "kundenzufriedenheit", "kundenbindung", "auftragsproblem"]}, {"code": "B-2", "section": "B", "number": 2, "title": "Instrumente der kaufmännischen Steuerung und Kontrolle nutzen", "keywords": ["debitor", "kreditor", "kontiert", "gebucht", "bestandskonto", "erfolgskonto", "mahnung", "abschlussarbeiten", "kostenrechnung", "kennzahl", "controlling", "soll ist vergleich", "statistik erstellt"]}, {"code": "B-3", "section": "B", "number": 3, "title": "Kaufmännische Abläufe in kleinen und mittleren Unternehmen gestalten", "keywords": ["kassenbuch", "offene posten", "jahresabschluss", "lohnabrechnung", "entgeltabrechnung", "vollkostenrechnung", "teilkostenrechnung", "abschreibung", "unternehmensertrag", "plan ist"]}, {"code": "B-4", "section": "B", "number": 4, "title": "Einkauf und Logistikprozesse planen, koordinieren und durchführen", "keywords": ["lager", "ware eingeräumt", "waren eingeräumt", "bestand", "bestände", "inventur", "wareneingang", "lieferant", "bestellung", "lagerhaltung", "logistik", "mangelhafte ware", "mängel", "kommissioniert", "versand vorbereitet", "paket gepackt", "ware verpackt", "lieferung kontrolliert"]}, {"code": "B-5", "section": "B", "number": 5, "title": "Marketing- und Vertriebsaktivitäten mitgestalten", "keywords": ["marketing", "werbung", "social media", "instagram", "facebook", "flyer", "verkaufsförderung", "marktbeobachtung", "mitbewerber", "vertrieb", "kundenbindung", "werbemaßnahme", "aktion geplant", "newsletter", "produktfoto"]}, {"code": "B-6", "section": "B", "number": 6, "title": "Personalwirtschaftliche Prozesse umsetzen", "keywords": ["personalakte", "entgelt", "fehlzeit", "personalstatistik", "einstellung", "arbeitsvertrag", "stellenanzeige", "bewerbung", "personalbedarf", "weiterbildung", "gesundheitsförderung"]}, {"code": "B-7", "section": "B", "number": 7, "title": "Assistenzaufgaben übernehmen", "keywords": ["selbstmanagement", "wiedervorlage", "geschäftskorrespondenz", "reise organisiert", "veranstaltung organisiert", "unterlagen zusammengestellt", "informationen zusammengestellt", "kleinprojekt", "termin koordiniert", "assistenz"]}, {"code": "B-8", "section": "B", "number": 8, "title": "Öffentlichkeitsarbeit und Veranstaltungsmanagement", "keywords": ["öffentlichkeitsarbeit", "veranstaltung", "event", "einladung", "teilnehmerunterlagen", "dienstleister koordiniert", "presse", "messe", "tagung", "veranstaltung dokumentiert"]}, {"code": "B-9", "section": "B", "number": 9, "title": "Aufgaben der Verwaltung wahrnehmen und Recht anwenden", "keywords": ["verwaltung", "antrag", "zuständigkeit", "rechtsgrundlage", "verwaltungsakt", "widerspruch", "einspruch", "behörde", "frist geprüft", "recht geprüft"]}, {"code": "B-10", "section": "B", "number": 10, "title": "Haushaltsmittel planen und bewirtschaften", "keywords": ["haushalt", "haushaltsmittel", "wirtschaftsplan", "mittelbedarf", "mittelabfluss", "mittelzufluss", "stundung", "jahresabschluss unterlagen"]}, {"code": "C-1", "section": "C", "number": 1, "title": "Organisation des Ausbildungsbetriebes, Berufsbildung sowie Arbeits- und Tarifrecht", "keywords": ["ausbildungsbetrieb", "ausbildungsvertrag", "ausbildungsordnung", "betrieblicher ablauf kennengelernt", "arbeitsvertrag erklärt", "tarifrecht", "betriebsrat", "gewerkschaft", "weiterbildung informiert", "unterweisung ausbildung"]}, {"code": "C-2", "section": "C", "number": 2, "title": "Sicherheit und Gesundheit bei der Arbeit", "keywords": ["arbeitsschutz", "sicherheit", "unfallverhütung", "gefährdung", "ergonomie", "unfall", "erste hilfe", "brandschutz", "schutzkleidung", "sicherheitsunterweisung", "hygienevorschriften"]}, {"code": "C-3", "section": "C", "number": 3, "title": "Umweltschutz und Nachhaltigkeit", "keywords": ["umweltschutz", "nachhaltigkeit", "müll getrennt", "abfall", "entsorgt", "recycling", "energie gespart", "ressourcenschonend", "verpackung wiederverwendet", "kaffeesatz entsorgt"]}, {"code": "C-4", "section": "C", "number": 4, "title": "Digitalisierte Arbeitswelt", "keywords": ["datenschutz", "datensicherheit", "digitale medien", "online recherchiert", "internet recherchiert", "software genutzt", "digital kommuniziert", "it störung", "passwort", "cloud", "daten geprüft", "e-mail sicherheit"]}, {"code": "C-5", "section": "C", "number": 5, "title": "Arbeitsorganisation und Informationsmanagement gestalten", "keywords": ["arbeit geplant", "arbeitsablauf", "kontrolliert", "geprüft", "getestet", "gereinigt", "sauber gemacht", "gewartet", "wartung", "automat gereinigt", "automaten gereinigt", "automat getestet", "automaten getestet", "maschine gereinigt", "maschine getestet", "vorbereitet", "nachgefüllt", "befüllt", "auffüllen", "automaten aufgefüllt", "arbeitsplatz aufgeräumt", "sortiert", "routineaufgabe"]}, {"code": "C-6", "section": "C", "number": 6, "title": "Zusammenarbeit und Kommunikation gestalten", "keywords": ["team", "kollegen", "kollegin", "gemeinsam", "abgesprochen", "kommuniziert", "feedback", "konflikt", "fremdsprache", "techniker unterstützt", "mit techniker gearbeitet", "zusammenarbeit", "übergabe"]}];
+const SPECIAL_RULES = [{"pattern": "\\b(service[- ]?schilder?|schilder?|etiketten?|etikett|beschriftung)\\b", "code": "A-2", "score": 20}, {"pattern": "\\b(automat(en)?|maschine(n)?)\\b.*\\b(getestet|geprüft|gereinigt|sauber|gewartet|befüllt|aufgefüllt)\\b|\\b(getestet|geprüft|gereinigt|sauber|gewartet|befüllt|aufgefüllt)\\b.*\\b(automat(en)?|maschine(n)?)\\b", "code": "C-5", "score": 22}, {"pattern": "\\b(techniker|monteur)\\b.*\\b(kunde|kunden|kundin)\\b.*\\b(aufgestellt|installiert|inbetrieb|montiert)\\b|\\b(automat|maschine)\\b.*\\b(kunde|kunden|kundin)\\b.*\\b(aufgestellt|installiert|inbetrieb|montiert)\\b", "code": "A-6", "score": 25}, {"pattern": "\\b(rechnung|rechnungen)\\b.*\\b(erstellt|geschrieben|fakturiert)\\b", "code": "A-6", "score": 24}, {"pattern": "\\b(rechnung|rechnungen|beleg|belege)\\b.*\\b(geprüft|sortiert|zugeordnet|kontrolliert)\\b", "code": "A-9", "score": 24}, {"pattern": "\\b(kunde|kunden|kundin)\\b.*\\b(beraten|erklärt|eingewiesen|telefoniert|angerufen|betreut)\\b", "code": "A-5", "score": 24}, {"pattern": "\\b(ware|waren|lieferung)\\b.*\\b(eingeräumt|eingelagert|angenommen|kontrolliert|geprüft)\\b", "code": "B-4", "score": 22}, {"pattern": "\\b(posteingang|postausgang|post bearbeitet)\\b", "code": "A-3", "score": 20}, {"pattern": "\\b(termin|besprechung|meeting)\\b.*\\b(geplant|koordiniert|vorbereitet|nachbereitet)\\b", "code": "A-4", "score": 22}, {"pattern": "\\b(bestellung|bestellt|lieferant|angebote verglichen|angebot eingeholt)\\b", "code": "A-7", "score": 18}];
+const DAYS = [
+  {id:'mo', name:'Montag'}, {id:'di', name:'Dienstag'}, {id:'mi', name:'Mittwoch'},
+  {id:'do', name:'Donnerstag'}, {id:'fr', name:'Freitag'}
+];
+const STORAGE_KEY = 'berichtsheft_einfach_v3';
+let manualAssignments = {};
 
-/* ===== KW → Montag ===== */
-function getMondayOfISOWeek(w, y) {
-  const simple = new Date(y, 0, 1 + (w - 1) * 7);
-  const dow = simple.getDay();
-  const ISOweekStart = simple;
-
-  if (dow <= 4)
-    ISOweekStart.setDate(simple.getDate() - simple.getDay() + 1);
-  else
-    ISOweekStart.setDate(simple.getDate() + 8 - simple.getDay());
-
-  return ISOweekStart;
+function escapeHtml(value) {
+  return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));
 }
-
-function formatDate(d){
-  return d.toLocaleDateString('de-DE');
+function normalizeText(value) {
+  return String(value).toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9äöüß\s-]/g, ' ').replace(/\s+/g, ' ').trim();
 }
-
-function getWeekDates(){
-  const kw = parseInt(document.getElementById('kw').value);
-  const jahr = parseInt(document.getElementById('jahr').value);
-
-  const monday = getMondayOfISOWeek(kw, jahr);
-
-  return [
-    new Date(monday),
-    new Date(monday.getTime() + 86400000),
-    new Date(monday.getTime() + 2*86400000),
-    new Date(monday.getTime() + 3*86400000),
-    new Date(monday.getTime() + 4*86400000)
-  ];
+function cleanLine(line) { return line.trim().replace(/^[-*•–—]\s*/, '').trim(); }
+function getActivities(dayId) {
+  return (document.getElementById('tasks-' + dayId).value || '').split(/\r?\n/).map(cleanLine).filter(Boolean);
 }
-
-/* ===== AUTO SORTIERUNG ===== */
-function autoFill() {
-  const text = document.getElementById("auto").value;
-
-  const lines = text.split("\n");
-
-  let current = null;
-
-  const data = {
-    montag: [],
-    dienstag: [],
-    mittwoch: [],
-    donnerstag: [],
-    freitag: []
+function assignmentKey(dayId, text) { return dayId + '|' + normalizeText(text); }
+function mappingLabel(m) { return m.section + ' - Lfd. Nr. ' + m.number + ': ' + m.title; }
+function findMapping(code) { return MAPPINGS.find(m => m.code === code) || MAPPINGS.find(m => m.code === 'C-5'); }
+function keywordScore(text, keyword) {
+  const key = normalizeText(keyword);
+  if (!key) return 0;
+  if (text.includes(key)) return key.includes(' ') ? 7 : 4;
+  const stem = key.length >= 7 ? key.slice(0, Math.max(5, key.length - 2)) : key;
+  return stem.length >= 5 && text.includes(stem) ? 2 : 0;
+}
+function guessMapping(activity) {
+  const text = normalizeText(activity);
+  const scores = new Map();
+  for (const rule of SPECIAL_RULES) {
+    try {
+      if (new RegExp(rule.pattern, 'i').test(text)) scores.set(rule.code, rule.score);
+    } catch (e) {}
+  }
+  for (const m of MAPPINGS) {
+    let score = scores.get(m.code) || 0;
+    for (const k of m.keywords) score += keywordScore(text, k);
+    scores.set(m.code, score);
+  }
+  let best = findMapping('C-5');
+  let bestScore = -1;
+  for (const m of MAPPINGS) {
+    const score = scores.get(m.code) || 0;
+    if (score > bestScore) { best = m; bestScore = score; }
+  }
+  return best;
+}
+function optionHtml(selectedCode) {
+  return ['A','B','C'].map(section => {
+    const options = MAPPINGS.filter(m => m.section === section)
+      .map(m => '<option value="' + m.code + '"' + (m.code === selectedCode ? ' selected' : '') + '>' + escapeHtml(mappingLabel(m)) + '</option>').join('');
+    return '<optgroup label="Abschnitt ' + section + '">' + options + '</optgroup>';
+  }).join('');
+}
+function parseBulkWeek() {
+  const raw = document.getElementById('bulkInput').value || '';
+  const aliases = {
+    'montag':'mo', 'mo':'mo',
+    'dienstag':'di', 'di':'di',
+    'mittwoch':'mi', 'mi':'mi',
+    'donnerstag':'do', 'do':'do',
+    'freitag':'fr', 'fr':'fr'
   };
+  const found = {mo:[], di:[], mi:[], do:[], fr:[]};
+  let current = null;
+  for (const originalLine of raw.split(/\r?\n/)) {
+    const trimmed = originalLine.trim();
+    if (!trimmed) continue;
+    const heading = normalizeText(trimmed.replace(/[:\-–—]+$/, ''));
+    if (aliases[heading]) {
+      current = aliases[heading];
+      continue;
+    }
+    if (!current) continue;
+    const activity = cleanLine(trimmed);
+    if (!activity || /^(\.{2,}|…+|-+)$/.test(activity)) continue;
+    // Falls jemand "Montag: Tätigkeit" schreibt, wird das ebenfalls verarbeitet.
+    const inline = activity.match(/^(montag|dienstag|mittwoch|donnerstag|freitag)\s*:\s*(.+)$/i);
+    if (inline) {
+      current = aliases[normalizeText(inline[1])];
+      const inlineActivity = cleanLine(inline[2]);
+      if (inlineActivity && !/^(\.{2,}|…+|-+)$/.test(inlineActivity)) found[current].push(inlineActivity);
+    } else {
+      found[current].push(activity);
+    }
+  }
+  DAYS.forEach(day => {
+    document.getElementById('tasks-' + day.id).value = found[day.id].join('\n');
+  });
+  manualAssignments = {};
+  renderPreview();
+  document.getElementById('status').textContent = 'Auf Tage verteilt';
+}
+function clearBulkInput() {
+  document.getElementById('bulkInput').value = '';
+  saveState();
+}
+function renderPreview() {
+  const body = document.getElementById('previewBody');
+  body.innerHTML = '';
+  for (const day of DAYS) {
+    const activities = getActivities(day.id);
+    const tasks = activities.length ? activities.map(a => '<div class="line">- ' + escapeHtml(a) + '</div>').join('') : '-';
+    const maps = activities.length ? activities.map(a => {
+      const key = assignmentKey(day.id, a);
+      const code = manualAssignments[key] || guessMapping(a).code;
+      return '<select class="map-select" data-key="' + escapeHtml(key) + '">' + optionHtml(code) + '</select>';
+    }).join('') : '-';
+    const tr = document.createElement('tr');
+    tr.innerHTML = '<td>' + day.name + '</td><td>' + tasks + '</td><td>' + maps + '</td>';
+    body.appendChild(tr);
+  }
+  body.querySelectorAll('select[data-key]').forEach(sel => sel.addEventListener('change', () => {
+    manualAssignments[sel.dataset.key] = sel.value;
+    saveState();
+  }));
+  saveState();
+}
+function buildInputs() {
+  document.getElementById('dayInputs').innerHTML = DAYS.map(day =>
+    '<div class="day-box"><label for="tasks-' + day.id + '">' + day.name + '</label>' +
+    '<textarea id="tasks-' + day.id + '" placeholder="Eine Tätigkeit pro Zeile"></textarea></div>'
+  ).join('');
+  document.querySelectorAll('textarea').forEach(el => el.addEventListener('input', debounce(renderPreview, 250)));
+}
+function currentIsoWeek() {
+  const now = new Date();
+  const d = new Date(Date.UTC(now.getFullYear(), now.getMonth(), now.getDate()));
+  const day = d.getUTCDay() || 7;
+  d.setUTCDate(d.getUTCDate() + 4 - day);
+  const start = new Date(Date.UTC(d.getUTCFullYear(), 0, 1));
+  return {year:d.getUTCFullYear(), week:Math.ceil((((d - start) / 86400000) + 1) / 7)};
+}
+function saveState() {
+  const tasks = {};
+  DAYS.forEach(d => tasks[d.id] = document.getElementById('tasks-' + d.id).value);
+  const state = {azubiName:azubiName.value, ausbilderName:ausbilderName.value, company:company.value, week:week.value, year:year.value, bulkInput:document.getElementById('bulkInput').value, tasks, manualAssignments};
+  document.getElementById('sigAzubiName').textContent = azubiName.value.trim();
+  document.getElementById('sigAusbilderName').textContent = ausbilderName.value.trim();
+  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); } catch (e) {}
+  const status = document.getElementById('status');
+  status.textContent = 'Gespeichert';
+  clearTimeout(saveState.timer);
+  saveState.timer = setTimeout(() => status.textContent = 'Automatisch gespeichert', 800);
+}
+function loadState() {
+  const current = currentIsoWeek();
+  year.value = current.year; week.value = current.week;
+  try {
+    const state = JSON.parse(localStorage.getItem(STORAGE_KEY) || 'null');
+    if (!state) return;
+    azubiName.value = state.azubiName || state.name || ''; ausbilderName.value = state.ausbilderName || ''; company.value = state.company || '';
+    document.getElementById('sigAzubiName').textContent = azubiName.value.trim();
+    document.getElementById('sigAusbilderName').textContent = ausbilderName.value.trim();
+    week.value = state.week || current.week; year.value = state.year || current.year;
+    document.getElementById('bulkInput').value = state.bulkInput || '';
+    DAYS.forEach(d => document.getElementById('tasks-' + d.id).value = (state.tasks && state.tasks[d.id]) || '');
+    manualAssignments = state.manualAssignments || {};
+  } catch (e) {}
+}
+function debounce(fn, wait) { let t; return () => { clearTimeout(t); t = setTimeout(fn, wait); }; }
+function clearWeek() {
+  if (!confirm('Alle Tätigkeiten dieser Woche löschen?')) return;
+  DAYS.forEach(d => document.getElementById('tasks-' + d.id).value = '');
+  manualAssignments = {};
+  renderPreview();
+}
+function rtfEscape(value) {
+  let out = '';
+  for (let i = 0; i < String(value).length; i++) {
+    const c = String(value)[i];
+    const code = c.charCodeAt(0);
+    if (c === '\\' || c === '{' || c === '}') out += '\\' + c;
+    else if (c === '\n') out += '\\line ';
+    else if (code >= 32 && code <= 126) out += c;
+    else {
+      const signed = code > 32767 ? code - 65536 : code;
+      out += '\\u' + signed + '?';
+    }
+  }
+  return out;
+}
+function exportRtf() {
+  const kw = String(document.getElementById('week').value || '');
+  const jahr = String(document.getElementById('year').value || '');
+  const azubi = document.getElementById('azubiName').value.trim() || '-';
+  const ausbilder = document.getElementById('ausbilderName').value.trim() || '-';
+  const betrieb = document.getElementById('company').value.trim() || '-';
 
-  function push(line){
-    if(!current) return;
-    data[current].push(line);
+  let rtf = '{\\rtf1\\ansi\\ansicpg1252\\deff0';
+  rtf += '{\\fonttbl{\\f0 Arial;}}';
+  rtf += '{\\colortbl;\\red31\\green41\\blue55;\\red225\\green231\\blue239;\\red243\\green246\\blue250;\\red255\\green255\\blue255;}';
+  rtf += '\\viewkind4\\uc1\\paperw11907\\paperh16840\\margl450\\margr450\\margt450\\margb450\\f0\\fs20 ';
+
+  // Überschrift und Stammdaten – bewusst außerhalb der einzigen Tabelle.
+  rtf += '\\pard\\qc\\b\\fs30 ' + rtfEscape('Ausbildungsnachweis – Berichtsheft') + '\\b0\\fs20\\par ';
+  rtf += '\\pard\\qc\\fs22 ' + rtfEscape('Kalenderwoche ' + (kw || '-') + ' / ' + (jahr || '-')) + '\\fs20\\par\\par ';
+  rtf += '\\pard\\ql\\b ' + rtfEscape('Name Azubi: ') + '\\b0 ' + rtfEscape(azubi) + '\\tab\\tab ';
+  rtf += '\\b ' + rtfEscape('Ausbilder/in: ') + '\\b0 ' + rtfEscape(ausbilder) + '\\par ';
+  rtf += '\\b ' + rtfEscape('Betrieb: ') + '\\b0 ' + rtfEscape(betrieb) + '\\par\\par ';
+
+  // Schmale Seitenränder schaffen mehr Platz auf A4. Die erste Spalte ist breit genug,
+  // damit auch „Donnerstag“ in einer Zeile bleibt; die letzte Zellgrenze bleibt innerhalb der Seite.
+  const cells = [1650, 7000, 10950];
+
+  function cellText(text, opts = {}) {
+    let out = opts.align === 'center' ? '\\qc ' : '\\ql ';
+    if (opts.bold) out += '\\b ';
+    if (opts.size) out += '\\fs' + opts.size + ' ';
+    out += rtfEscape(text);
+    if (opts.bold) out += '\\b0 ';
+    if (opts.size) out += '\\fs20 ';
+    return out;
   }
 
-  for(let line of lines){
-    const l = line.trim();
-
-    if(/^montag/i.test(l)) { current="montag"; continue; }
-    if(/^dienstag/i.test(l)) { current="dienstag"; continue; }
-    if(/^mittwoch/i.test(l)) { current="mittwoch"; continue; }
-    if(/^donnerstag/i.test(l)) { current="donnerstag"; continue; }
-    if(/^freitag/i.test(l)) { current="freitag"; continue; }
-
-    push(l);
+  function row(values, opts = {}) {
+    const shade = opts.shade ? '\\clcbpat' + opts.shade : '';
+    let x = '\\trowd\\trgaph100\\trleft0';
+    if (opts.height) x += '\\trrh' + opts.height;
+    for (const pos of cells) {
+      x += '\\clvertalt\\clbrdrt\\brdrs\\brdrw12\\brdrcf1';
+      x += '\\clbrdrl\\brdrs\\brdrw12\\brdrcf1';
+      x += '\\clbrdrb\\brdrs\\brdrw12\\brdrcf1';
+      x += '\\clbrdrr\\brdrs\\brdrw12\\brdrcf1' + shade + '\\cellx' + pos;
+    }
+    values.forEach((value, index) => {
+      const colOpts = (opts.columns && opts.columns[index]) || {};
+      x += '\\pard\\intbl\\sb100\\sa100 ' + cellText(value, colOpts) + '\\cell ';
+    });
+    return x + '\\row ';
   }
 
-  document.getElementById("montag").value = data.montag.join("\n");
-  document.getElementById("dienstag").value = data.dienstag.join("\n");
-  document.getElementById("mittwoch").value = data.mittwoch.join("\n");
-  document.getElementById("donnerstag").value = data.donnerstag.join("\n");
-  document.getElementById("freitag").value = data.freitag.join("\n");
+  // Genau eine Tabelle mit allen fünf Wochentagen.
+  rtf += row(['Tag', 'Tätigkeiten', 'Zuordnung (Abschnitt / Lfd. Nr.)'], {
+    shade: 2,
+    height: 470,
+    columns: [
+      {bold:true, align:'center'},
+      {bold:true, align:'center'},
+      {bold:true, align:'center', size:18}
+    ]
+  });
 
-  checkFields();
-}
+  for (const day of DAYS) {
+    const acts = getActivities(day.id);
+    const taskText = acts.length ? acts.map(a => '• ' + a).join('\n') : '—';
+    const mapText = acts.length ? acts.map(a => {
+      const code = manualAssignments[assignmentKey(day.id, a)] || guessMapping(a).code;
+      const m = findMapping(code);
+      return '• ' + m.section + ' – Lfd. Nr. ' + m.number + '\n' + m.title;
+    }).join('\n') : '—';
 
-/* ===== CHECK ===== */
-function checkFields(){
-  const ok =
-    document.getElementById('kw').value &&
-    document.getElementById('jahr').value &&
-    document.getElementById('azubi').value.trim() &&
-    document.getElementById('ausbilder').value.trim() &&
-    document.getElementById('montag').value.trim() &&
-    document.getElementById('dienstag').value.trim() &&
-    document.getElementById('mittwoch').value.trim() &&
-    document.getElementById('donnerstag').value.trim() &&
-    document.getElementById('freitag').value.trim();
+    rtf += row([day.name, taskText, mapText], {
+      height: acts.length ? Math.max(760, 430 + acts.length * 280) : 700,
+      columns: [{bold:true, align:'center', size:18}, {}, {size:18}]
+    });
+  }
 
-  document.getElementById('wordBtn').disabled = !ok;
-}
+  // Unterschriften mit klaren Linien unterhalb der Tabelle.
+  rtf += '\\pard\\par\\par ';
+  rtf += '\\trowd\\trgaph140\\trleft0';
+  rtf += '\\clvertalb\\cellx5300\\clvertalb\\cellx10950';
+  rtf += '\\pard\\intbl\\ql\\sa80 ' + rtfEscape('________________________________________') + '\\line ';
+  rtf += rtfEscape('Datum / Unterschrift Azubi') + '\\line ' + rtfEscape(azubi) + '\\cell ';
+  rtf += '\\pard\\intbl\\ql\\sa80 ' + rtfEscape('________________________________________') + '\\line ';
+  rtf += rtfEscape('Datum / Unterschrift Ausbilder/in') + '\\line ' + rtfEscape(ausbilder) + '\\cell\\row ';
 
-/* ===== FORMAT LISTE ===== */
-function format(text){
-  return text
-    .split("\n")
-    .filter(l => l.trim() !== "")
-    .map(l => l.trim().startsWith("-") ? l.trim() : "- " + l.trim())
-    .join("<br>");
-}
-
-/* ===== WORD EXPORT ===== */
-function downloadWord(){
-
-  const kw = document.getElementById('kw').value;
-  const jahr = document.getElementById('jahr').value;
-  const azubi = document.getElementById('azubi').value;
-  const ausbilder = document.getElementById('ausbilder').value;
-
-  const dates = getWeekDates();
-
-  const html = `
-  <html>
-  <head><meta charset="utf-8"></head>
-
-  <body style="font-family:Arial;color:black;">
-
-    <h1>Berichtsheft</h1>
-
-    <p><b>KW:</b> ${kw}</p>
-    <p><b>Jahr:</b> ${jahr}</p>
-    <p><b>Azubi:</b> ${azubi}</p>
-    <p><b>Ausbilder:</b> ${ausbilder}</p>
-
-    <table border="1" style="width:100%;border-collapse:collapse;">
-      <tr>
-        <th style="text-align:center;">Tag</th>
-        <th style="text-align:center;">Datum</th>
-        <th>Tätigkeit</th>
-      </tr>
-
-      <tr><td style="text-align:center;">Montag</td><td style="text-align:center;">${formatDate(dates[0])}</td><td>${format(document.getElementById('montag').value)}</td></tr>
-      <tr><td style="text-align:center;">Dienstag</td><td style="text-align:center;">${formatDate(dates[1])}</td><td>${format(document.getElementById('dienstag').value)}</td></tr>
-      <tr><td style="text-align:center;">Mittwoch</td><td style="text-align:center;">${formatDate(dates[2])}</td><td>${format(document.getElementById('mittwoch').value)}</td></tr>
-      <tr><td style="text-align:center;">Donnerstag</td><td style="text-align:center;">${formatDate(dates[3])}</td><td>${format(document.getElementById('donnerstag').value)}</td></tr>
-      <tr><td style="text-align:center;">Freitag</td><td style="text-align:center;">${formatDate(dates[4])}</td><td>${format(document.getElementById('freitag').value)}</td></tr>
-
-    </table>
-
-    <br><br><br>
-
-    <table style="width:100%;margin-top:50px;">
-      <tr>
-        <td style="text-align:center;">
-          ___________________________<br>
-          Unterschrift Azubi
-        </td>
-
-        <td style="text-align:center;">
-          ___________________________<br>
-          Unterschrift Ausbilder
-        </td>
-      </tr>
-    </table>
-
-  </body>
-  </html>
-  `;
-
-  const blob = new Blob([html], { type: "application/msword" });
+  rtf += '}';
+  const blob = new Blob([rtf], {type:'application/rtf'});
   const url = URL.createObjectURL(blob);
-
-  const a = document.createElement("a");
+  const a = document.createElement('a');
   a.href = url;
-  a.download = `Berichtsheft_KW_${kw}.doc`;
+  a.download = 'Berichtsheft_KW_' + String(kw || '00').padStart(2, '0') + '_' + (jahr || 'Jahr') + '.rtf';
+  document.body.appendChild(a);
   a.click();
-
-  URL.revokeObjectURL(url);
+  a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 15000);
 }
 
+buildInputs();
+loadState();
+document.getElementById('sigAzubiName').textContent = azubiName.value.trim();
+document.getElementById('sigAusbilderName').textContent = ausbilderName.value.trim();
+renderPreview();
+['azubiName','ausbilderName','company','week','year'].forEach(id => document.getElementById(id).addEventListener('input', saveState));
+document.getElementById('bulkInput').addEventListener('input', debounce(saveState, 300));
+document.getElementById('sortBtn').addEventListener('click', parseBulkWeek);
+document.getElementById('clearBulkBtn').addEventListener('click', clearBulkInput);
+document.getElementById('updateBtn').addEventListener('click', renderPreview);
+document.getElementById('clearBtn').addEventListener('click', clearWeek);
+document.getElementById('exportBtn').addEventListener('click', exportRtf);
 </script>
-
 </body>
 </html>
