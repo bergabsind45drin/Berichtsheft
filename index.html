@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Berichtsheft - einfache Version</title>
+<title>Berichtsheft - Word-Export</title>
 <style>
   :root {
     font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
@@ -232,7 +232,7 @@ Freitag
       </table>
     </div>
     <div class="actions">
-      <button class="primary" id="exportBtn" type="button">Als Word-Datei (.rtf) exportieren</button>
+      <button class="primary" id="exportBtn" type="button">Als Word-Datei (.docx) exportieren</button>
     </div>
     <div class="signature-area" style="margin-top:32px; display:grid; grid-template-columns:1fr 1fr; gap:40px;">
       <div>
@@ -419,112 +419,233 @@ function clearWeek() {
   manualAssignments = {};
   renderPreview();
 }
-function rtfEscape(value) {
-  let out = '';
-  for (let i = 0; i < String(value).length; i++) {
-    const c = String(value)[i];
-    const code = c.charCodeAt(0);
-    if (c === '\\' || c === '{' || c === '}') out += '\\' + c;
-    else if (c === '\n') out += '\\line ';
-    else if (code >= 32 && code <= 126) out += c;
-    else {
-      const signed = code > 32767 ? code - 65536 : code;
-      out += '\\u' + signed + '?';
-    }
-  }
-  return out;
+function xmlEscape(value) {
+  return String(value).replace(/[&<>"']/g, c => ({
+    '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&apos;'
+  }[c]));
 }
-function exportRtf() {
+function wordRun(value, options = {}) {
+  const props = [
+    options.bold ? '<w:b/>' : '',
+    options.size ? '<w:sz w:val="' + options.size + '"/><w:szCs w:val="' + options.size + '"/>' : '',
+    options.color ? '<w:color w:val="' + options.color + '"/>' : ''
+  ].join('');
+  return '<w:r>' + (props ? '<w:rPr>' + props + '</w:rPr>' : '') +
+    '<w:t xml:space="preserve">' + xmlEscape(value) + '</w:t></w:r>';
+}
+function wordParagraph(value, options = {}) {
+  const align = options.align ? '<w:jc w:val="' + options.align + '"/>' : '';
+  const spacing = '<w:spacing w:before="' + (options.before || 0) +
+    '" w:after="' + (options.after ?? 80) + '" w:line="240" w:lineRule="auto"/>';
+  const keep = options.keepNext ? '<w:keepNext/>' : '';
+  return '<w:p><w:pPr>' + align + spacing + keep + '</w:pPr>' +
+    wordRun(value, options) + '</w:p>';
+}
+function wordCell(paragraphs, width, options = {}) {
+  const fill = options.fill ? '<w:shd w:val="clear" w:color="auto" w:fill="' + options.fill + '"/>' : '';
+  const valign = '<w:vAlign w:val="' + (options.valign || 'center') + '"/>';
+  const margins = '<w:tcMar><w:top w:w="110" w:type="dxa"/><w:left w:w="120" w:type="dxa"/>' +
+    '<w:bottom w:w="110" w:type="dxa"/><w:right w:w="120" w:type="dxa"/></w:tcMar>';
+  const content = (Array.isArray(paragraphs) ? paragraphs : [paragraphs])
+    .map((text, index) => wordParagraph(text, {
+      bold: options.bold,
+      size: options.size,
+      color: options.color,
+      align: options.align,
+      after: index === paragraphs.length - 1 ? 0 : 55
+    })).join('');
+  return '<w:tc><w:tcPr><w:tcW w:w="' + width + '" w:type="dxa"/>' +
+    fill + valign + margins + '</w:tcPr>' + content + '</w:tc>';
+}
+function wordRow(cells, options = {}) {
+  return '<w:tr>' + cells.map(cell => wordCell(cell.paragraphs, cell.width, {
+    bold: options.bold || cell.bold,
+    size: cell.size,
+    color: options.color || cell.color,
+    align: cell.align,
+    fill: options.fill || cell.fill,
+    valign: cell.valign
+  })).join('') + '</w:tr>';
+}
+function crc32(bytes) {
+  if (!crc32.table) {
+    crc32.table = Array.from({length:256}, (_, n) => {
+      let c = n;
+      for (let k = 0; k < 8; k++) c = (c & 1) ? (0xEDB88320 ^ (c >>> 1)) : (c >>> 1);
+      return c >>> 0;
+    });
+  }
+  let crc = 0xFFFFFFFF;
+  for (const byte of bytes) crc = crc32.table[(crc ^ byte) & 0xFF] ^ (crc >>> 8);
+  return (crc ^ 0xFFFFFFFF) >>> 0;
+}
+function zipHeader(size) {
+  const bytes = new Uint8Array(size);
+  const view = new DataView(bytes.buffer);
+  return {
+    bytes,
+    u16(offset, value) { view.setUint16(offset, value, true); },
+    u32(offset, value) { view.setUint32(offset, value >>> 0, true); }
+  };
+}
+function joinBytes(parts) {
+  const output = new Uint8Array(parts.reduce((sum, part) => sum + part.length, 0));
+  let offset = 0;
+  for (const part of parts) {
+    output.set(part, offset);
+    offset += part.length;
+  }
+  return output;
+}
+function createDocxZip(files) {
+  const encoder = new TextEncoder();
+  const localParts = [];
+  const centralParts = [];
+  let localOffset = 0;
+  const now = new Date();
+  const dosTime = (now.getHours() << 11) | (now.getMinutes() << 5) | Math.floor(now.getSeconds() / 2);
+  const dosDate = ((now.getFullYear() - 1980) << 9) | ((now.getMonth() + 1) << 5) | now.getDate();
+
+  for (const [name, content] of Object.entries(files)) {
+    const nameBytes = encoder.encode(name);
+    const data = encoder.encode(content);
+    const crc = crc32(data);
+
+    const local = zipHeader(30);
+    local.u32(0, 0x04034B50); local.u16(4, 20); local.u16(6, 0x0800);
+    local.u16(8, 0); local.u16(10, dosTime); local.u16(12, dosDate);
+    local.u32(14, crc); local.u32(18, data.length); local.u32(22, data.length);
+    local.u16(26, nameBytes.length); local.u16(28, 0);
+    localParts.push(local.bytes, nameBytes, data);
+
+    const central = zipHeader(46);
+    central.u32(0, 0x02014B50); central.u16(4, 20); central.u16(6, 20);
+    central.u16(8, 0x0800); central.u16(10, 0); central.u16(12, dosTime); central.u16(14, dosDate);
+    central.u32(16, crc); central.u32(20, data.length); central.u32(24, data.length);
+    central.u16(28, nameBytes.length); central.u16(30, 0); central.u16(32, 0);
+    central.u16(34, 0); central.u16(36, 0); central.u32(38, 0); central.u32(42, localOffset);
+    centralParts.push(central.bytes, nameBytes);
+    localOffset += local.bytes.length + nameBytes.length + data.length;
+  }
+
+  const centralDirectory = joinBytes(centralParts);
+  const end = zipHeader(22);
+  end.u32(0, 0x06054B50); end.u16(4, 0); end.u16(6, 0);
+  end.u16(8, Object.keys(files).length); end.u16(10, Object.keys(files).length);
+  end.u32(12, centralDirectory.length); end.u32(16, localOffset); end.u16(20, 0);
+  return joinBytes([...localParts, centralDirectory, end.bytes]);
+}
+function exportDocx() {
   const kw = String(document.getElementById('week').value || '');
   const jahr = String(document.getElementById('year').value || '');
   const azubi = document.getElementById('azubiName').value.trim() || '-';
   const ausbilder = document.getElementById('ausbilderName').value.trim() || '-';
   const betrieb = document.getElementById('company').value.trim() || '-';
-
-  let rtf = '{\\rtf1\\ansi\\ansicpg1252\\deff0';
-  rtf += '{\\fonttbl{\\f0 Arial;}}';
-  rtf += '{\\colortbl;\\red31\\green41\\blue55;\\red225\\green231\\blue239;\\red243\\green246\\blue250;\\red255\\green255\\blue255;}';
-  rtf += '\\viewkind4\\uc1\\paperw11907\\paperh16840\\margl450\\margr450\\margt450\\margb450\\f0\\fs20 ';
-
-  // Überschrift und Stammdaten – bewusst außerhalb der einzigen Tabelle.
-  rtf += '\\pard\\qc\\b\\fs30 ' + rtfEscape('Ausbildungsnachweis – Berichtsheft') + '\\b0\\fs20\\par ';
-  rtf += '\\pard\\qc\\fs22 ' + rtfEscape('Kalenderwoche ' + (kw || '-') + ' / ' + (jahr || '-')) + '\\fs20\\par\\par ';
-  rtf += '\\pard\\ql\\b ' + rtfEscape('Name Azubi: ') + '\\b0 ' + rtfEscape(azubi) + '\\tab\\tab ';
-  rtf += '\\b ' + rtfEscape('Ausbilder/in: ') + '\\b0 ' + rtfEscape(ausbilder) + '\\par ';
-  rtf += '\\b ' + rtfEscape('Betrieb: ') + '\\b0 ' + rtfEscape(betrieb) + '\\par\\par ';
-
-  // Schmale Seitenränder schaffen mehr Platz auf A4. Die erste Spalte ist breit genug,
-  // damit auch „Donnerstag“ in einer Zeile bleibt; die letzte Zellgrenze bleibt innerhalb der Seite.
-  const cells = [1650, 7000, 10950];
-
-  function cellText(text, opts = {}) {
-    let out = opts.align === 'center' ? '\\qc ' : '\\ql ';
-    if (opts.bold) out += '\\b ';
-    if (opts.size) out += '\\fs' + opts.size + ' ';
-    out += rtfEscape(text);
-    if (opts.bold) out += '\\b0 ';
-    if (opts.size) out += '\\fs20 ';
-    return out;
-  }
-
-  function row(values, opts = {}) {
-    const shade = opts.shade ? '\\clcbpat' + opts.shade : '';
-    let x = '\\trowd\\trgaph100\\trleft0';
-    if (opts.height) x += '\\trrh' + opts.height;
-    for (const pos of cells) {
-      x += '\\clvertalt\\clbrdrt\\brdrs\\brdrw12\\brdrcf1';
-      x += '\\clbrdrl\\brdrs\\brdrw12\\brdrcf1';
-      x += '\\clbrdrb\\brdrs\\brdrw12\\brdrcf1';
-      x += '\\clbrdrr\\brdrs\\brdrw12\\brdrcf1' + shade + '\\cellx' + pos;
-    }
-    values.forEach((value, index) => {
-      const colOpts = (opts.columns && opts.columns[index]) || {};
-      x += '\\pard\\intbl\\sb100\\sa100 ' + cellText(value, colOpts) + '\\cell ';
-    });
-    return x + '\\row ';
-  }
-
-  // Genau eine Tabelle mit allen fünf Wochentagen.
-  rtf += row(['Tag', 'Tätigkeiten', 'Zuordnung (Abschnitt / Lfd. Nr.)'], {
-    shade: 2,
-    height: 470,
-    columns: [
-      {bold:true, align:'center'},
-      {bold:true, align:'center'},
-      {bold:true, align:'center', size:18}
-    ]
+  const widths = [1500, 5300, 3660];
+  let body = '';
+  body += wordParagraph('Ausbildungsnachweis - Berichtsheft', {
+    bold:true, size:32, color:'1F2937', align:'center', after:80, keepNext:true
   });
+  body += wordParagraph('Kalenderwoche ' + (kw || '-') + ' / ' + (jahr || '-'), {
+    size:24, align:'center', after:220, keepNext:true
+  });
+  body += wordParagraph('Name Azubi: ' + azubi, {bold:true, after:70});
+  body += wordParagraph('Ausbilder/in: ' + ausbilder, {bold:true, after:70});
+  body += wordParagraph('Betrieb: ' + betrieb, {bold:true, after:180});
+
+  let table = '<w:tbl><w:tblPr><w:tblW w:w="10460" w:type="dxa"/><w:tblLayout w:type="fixed"/>' +
+    '<w:tblBorders><w:top w:val="single" w:sz="8" w:color="6B7280"/>' +
+    '<w:left w:val="single" w:sz="8" w:color="6B7280"/>' +
+    '<w:bottom w:val="single" w:sz="8" w:color="6B7280"/>' +
+    '<w:right w:val="single" w:sz="8" w:color="6B7280"/>' +
+    '<w:insideH w:val="single" w:sz="6" w:color="CBD5E1"/>' +
+    '<w:insideV w:val="single" w:sz="6" w:color="CBD5E1"/></w:tblBorders></w:tblPr>' +
+    '<w:tblGrid><w:gridCol w:w="' + widths[0] + '"/><w:gridCol w:w="' + widths[1] +
+    '"/><w:gridCol w:w="' + widths[2] + '"/></w:tblGrid>';
+  table += wordRow([
+    {paragraphs:['Tag'], width:widths[0], align:'center'},
+    {paragraphs:['Tätigkeiten'], width:widths[1], align:'center'},
+    {paragraphs:['Zuordnung (Abschnitt / Lfd. Nr.)'], width:widths[2], align:'center', size:19}
+  ], {bold:true, color:'FFFFFF', fill:'334155'});
 
   for (const day of DAYS) {
     const acts = getActivities(day.id);
-    const taskText = acts.length ? acts.map(a => '• ' + a).join('\n') : '—';
-    const mapText = acts.length ? acts.map(a => {
+    const taskLines = acts.length ? acts.map(a => '• ' + a) : ['-'];
+    const mapLines = acts.length ? acts.map(a => {
       const code = manualAssignments[assignmentKey(day.id, a)] || guessMapping(a).code;
       const m = findMapping(code);
-      return '• ' + m.section + ' – Lfd. Nr. ' + m.number + '\n' + m.title;
-    }).join('\n') : '—';
-
-    rtf += row([day.name, taskText, mapText], {
-      height: acts.length ? Math.max(760, 430 + acts.length * 280) : 700,
-      columns: [{bold:true, align:'center', size:18}, {}, {size:18}]
-    });
+      return '• ' + m.section + ' - Lfd. Nr. ' + m.number + ': ' + m.title;
+    }) : ['-'];
+    table += wordRow([
+      {paragraphs:[day.name], width:widths[0], bold:true, align:'center', size:19},
+      {paragraphs:taskLines, width:widths[1]},
+      {paragraphs:mapLines, width:widths[2], size:19}
+    ]);
   }
+  body += table + '</w:tbl>';
+  body += wordParagraph('', {after:260});
+  body += wordParagraph('________________________________        ____________________________________', {after:60});
+  body += wordParagraph('Datum / Unterschrift Azubi                 Datum / Unterschrift Ausbilder/in', {size:18, after:40});
+  body += wordParagraph(azubi + '                                              ' + ausbilder, {size:18, after:0});
 
-  // Unterschriften mit klaren Linien unterhalb der Tabelle.
-  rtf += '\\pard\\par\\par ';
-  rtf += '\\trowd\\trgaph140\\trleft0';
-  rtf += '\\clvertalb\\cellx5300\\clvertalb\\cellx10950';
-  rtf += '\\pard\\intbl\\ql\\sa80 ' + rtfEscape('________________________________________') + '\\line ';
-  rtf += rtfEscape('Datum / Unterschrift Azubi') + '\\line ' + rtfEscape(azubi) + '\\cell ';
-  rtf += '\\pard\\intbl\\ql\\sa80 ' + rtfEscape('________________________________________') + '\\line ';
-  rtf += rtfEscape('Datum / Unterschrift Ausbilder/in') + '\\line ' + rtfEscape(ausbilder) + '\\cell\\row ';
-
-  rtf += '}';
-  const blob = new Blob([rtf], {type:'application/rtf'});
+  const documentXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:document xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+    '<w:body>' + body +
+    '<w:sectPr><w:pgSz w:w="11906" w:h="16838"/><w:pgMar w:top="650" w:right="720" ' +
+    'w:bottom="650" w:left="720" w:header="360" w:footer="360" w:gutter="0"/></w:sectPr>' +
+    '</w:body></w:document>';
+  const stylesXml = '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+    '<w:styles xmlns:w="http://schemas.openxmlformats.org/wordprocessingml/2006/main">' +
+    '<w:docDefaults><w:rPrDefault><w:rPr><w:rFonts w:ascii="Arial" w:hAnsi="Arial" w:cs="Arial"/>' +
+    '<w:sz w:val="20"/><w:szCs w:val="20"/></w:rPr></w:rPrDefault>' +
+    '<w:pPrDefault><w:pPr/></w:pPrDefault></w:docDefaults>' +
+    '<w:style w:type="paragraph" w:default="1" w:styleId="Normal">' +
+    '<w:name w:val="Normal"/><w:qFormat/></w:style></w:styles>';
+  const timestamp = new Date().toISOString();
+  const files = {
+    '[Content_Types].xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Types xmlns="http://schemas.openxmlformats.org/package/2006/content-types">' +
+      '<Default Extension="rels" ContentType="application/vnd.openxmlformats-package.relationships+xml"/>' +
+      '<Default Extension="xml" ContentType="application/xml"/>' +
+      '<Override PartName="/word/document.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.document.main+xml"/>' +
+      '<Override PartName="/word/styles.xml" ContentType="application/vnd.openxmlformats-officedocument.wordprocessingml.styles+xml"/>' +
+      '<Override PartName="/docProps/core.xml" ContentType="application/vnd.openxmlformats-package.core-properties+xml"/>' +
+      '<Override PartName="/docProps/app.xml" ContentType="application/vnd.openxmlformats-officedocument.extended-properties+xml"/>' +
+      '</Types>',
+    '_rels/.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/officeDocument" Target="word/document.xml"/>' +
+      '<Relationship Id="rId2" Type="http://schemas.openxmlformats.org/package/2006/relationships/metadata/core-properties" Target="docProps/core.xml"/>' +
+      '<Relationship Id="rId3" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/extended-properties" Target="docProps/app.xml"/>' +
+      '</Relationships>',
+    'word/document.xml': documentXml,
+    'word/styles.xml': stylesXml,
+    'word/_rels/document.xml.rels': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Relationships xmlns="http://schemas.openxmlformats.org/package/2006/relationships">' +
+      '<Relationship Id="rId1" Type="http://schemas.openxmlformats.org/officeDocument/2006/relationships/styles" Target="styles.xml"/>' +
+      '</Relationships>',
+    'docProps/core.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<cp:coreProperties xmlns:cp="http://schemas.openxmlformats.org/package/2006/metadata/core-properties" ' +
+      'xmlns:dc="http://purl.org/dc/elements/1.1/" xmlns:dcterms="http://purl.org/dc/terms/" ' +
+      'xmlns:dcmitype="http://purl.org/dc/dcmitype/" xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance">' +
+      '<dc:title>' + xmlEscape('Berichtsheft KW ' + (kw || '-') + ' / ' + (jahr || '-')) + '</dc:title>' +
+      '<dc:creator>Berichtsheft-Assistent</dc:creator><cp:lastModifiedBy>Berichtsheft-Assistent</cp:lastModifiedBy>' +
+      '<dcterms:created xsi:type="dcterms:W3CDTF">' + timestamp + '</dcterms:created>' +
+      '<dcterms:modified xsi:type="dcterms:W3CDTF">' + timestamp + '</dcterms:modified></cp:coreProperties>',
+    'docProps/app.xml': '<?xml version="1.0" encoding="UTF-8" standalone="yes"?>' +
+      '<Properties xmlns="http://schemas.openxmlformats.org/officeDocument/2006/extended-properties" ' +
+      'xmlns:vt="http://schemas.openxmlformats.org/officeDocument/2006/docPropsVTypes">' +
+      '<Application>Berichtsheft-Assistent</Application><DocSecurity>0</DocSecurity><ScaleCrop>false</ScaleCrop>' +
+      '<Company>' + xmlEscape(betrieb === '-' ? '' : betrieb) + '</Company><AppVersion>1.0</AppVersion></Properties>'
+  };
+  const docx = createDocxZip(files);
+  const blob = new Blob([docx], {
+    type:'application/vnd.openxmlformats-officedocument.wordprocessingml.document'
+  });
   const url = URL.createObjectURL(blob);
   const a = document.createElement('a');
   a.href = url;
-  a.download = 'Berichtsheft_KW_' + String(kw || '00').padStart(2, '0') + '_' + (jahr || 'Jahr') + '.rtf';
+  a.download = 'Berichtsheft_KW_' + String(kw || '00').padStart(2, '0') + '_' + (jahr || 'Jahr') + '.docx';
   document.body.appendChild(a);
   a.click();
   a.remove();
@@ -542,7 +663,7 @@ document.getElementById('sortBtn').addEventListener('click', parseBulkWeek);
 document.getElementById('clearBulkBtn').addEventListener('click', clearBulkInput);
 document.getElementById('updateBtn').addEventListener('click', renderPreview);
 document.getElementById('clearBtn').addEventListener('click', clearWeek);
-document.getElementById('exportBtn').addEventListener('click', exportRtf);
+document.getElementById('exportBtn').addEventListener('click', exportDocx);
 </script>
 </body>
 </html>
